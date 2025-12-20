@@ -36,14 +36,35 @@ export function ResetPassword() {
   });
 
   useEffect(() => {
-    // Verificar se há um hash de recuperação na URL
-    const hash = window.location.hash;
-    if (hash.includes('access_token') && hash.includes('type=recovery')) {
-      setLoading(false);
-    } else {
-      setError('Link de recuperação inválido ou expirado.');
-      setLoading(false);
-    }
+    // Processar o hash de recuperação do Supabase
+    const processHash = async () => {
+      try {
+        const hash = window.location.hash;
+        if (hash.includes('access_token') && hash.includes('type=recovery')) {
+          // O Supabase processa automaticamente o hash quando detecta na URL
+          // Verificar se conseguimos obter o usuário (indica que o hash foi processado)
+          const { data: { user }, error: hashError } = await supabase.auth.getUser();
+          
+          if (hashError || !user) {
+            console.error('Erro ao processar hash:', hashError);
+            setError('Link de recuperação inválido ou expirado. Por favor, solicite um novo link.');
+            setLoading(false);
+            return;
+          }
+
+          setLoading(false);
+        } else {
+          setError('Link de recuperação inválido ou expirado. Por favor, solicite um novo link.');
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Erro ao processar hash:', err);
+        setError('Erro ao processar link de recuperação. Tente novamente.');
+        setLoading(false);
+      }
+    };
+
+    processHash();
   }, []);
 
   const onSubmit = async (data: ResetPasswordFormData) => {
@@ -51,8 +72,15 @@ export function ResetPassword() {
       setSubmitting(true);
       setError(null);
 
-      // O Supabase já processa o hash automaticamente quando chamamos updateUser
-      // Não precisamos extrair o token manualmente
+      // Verificar se há um usuário autenticado (o hash já foi processado)
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        console.error('Erro ao verificar usuário:', userError);
+        setError('Sessão inválida. Por favor, use o link do email novamente.');
+        setSubmitting(false);
+        return;
+      }
 
       // Atualizar a senha usando o Supabase
       const { error: updateError } = await supabase.auth.updateUser({
@@ -60,21 +88,22 @@ export function ResetPassword() {
       });
 
       if (updateError) {
+        console.error('Erro ao atualizar senha:', updateError);
         setError(updateError.message || 'Erro ao atualizar senha. Tente novamente.');
+        setSubmitting(false);
         return;
       }
 
       setSuccess(true);
       form.reset();
 
-      // Redirecionar para login após 3 segundos
+      // Redirecionar para login após 2 segundos
       setTimeout(() => {
         window.location.href = '/';
-      }, 3000);
+      }, 2000);
     } catch (err) {
+      console.error('Erro inesperado:', err);
       setError('Erro inesperado. Tente novamente.');
-      console.error('Erro:', err);
-    } finally {
       setSubmitting(false);
     }
   };
