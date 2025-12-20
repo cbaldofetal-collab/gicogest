@@ -275,15 +275,16 @@ export function Login() {
                 {loginForm.formState.errors.password && (
                   <p className="mt-1 text-sm text-danger-600">{loginForm.formState.errors.password.message}</p>
                 )}
-                <div className="mt-2 text-right">
-                  <button
-                    type="button"
-                    onClick={handleShowResetPassword}
-                    className="text-sm text-primary-600 hover:text-primary-700 hover:underline font-medium"
-                  >
-                    Esqueci minha senha
-                  </button>
-                </div>
+              </div>
+
+              <div className="flex justify-end -mt-2 mb-2">
+                <button
+                  type="button"
+                  onClick={handleShowResetPassword}
+                  className="text-sm text-primary-600 hover:text-primary-700 hover:underline font-medium"
+                >
+                  Esqueci minha senha?
+                </button>
               </div>
 
               <Button type="submit" disabled={submitting} className="w-full">
