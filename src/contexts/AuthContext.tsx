@@ -134,10 +134,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     });
 
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-
     // Ouvir mudanças na autenticação
     const {
       data: { subscription },
@@ -188,7 +184,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
+    // Cleanup function
     return () => {
+      if (timeoutId) clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, []);
