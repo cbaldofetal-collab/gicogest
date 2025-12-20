@@ -39,22 +39,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     async function checkSession() {
       try {
+        // Se houver hash de recuperação na URL, não fazer timeout (deixar o componente ResetPassword processar)
+        const hash = window.location.hash;
+        const isRecoveryFlow = hash.includes('access_token') && hash.includes('type=recovery');
+        
         // Timeout de segurança: se demorar mais de 5 segundos, parar de carregar
-        timeoutId = setTimeout(() => {
-          console.warn('Timeout ao verificar sessão, parando carregamento');
-          setAuthState({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-          });
-        }, 5000);
+        // Mas não fazer timeout se estiver em fluxo de recuperação
+        if (!isRecoveryFlow) {
+          timeoutId = setTimeout(() => {
+            console.warn('Timeout ao verificar sessão, parando carregamento');
+            setAuthState({
+              user: null,
+              isAuthenticated: false,
+              isLoading: false,
+            });
+          }, 5000);
+        }
 
         const {
           data: { session },
           error: sessionError,
         } = await supabase.auth.getSession();
 
-        clearTimeout(timeoutId);
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        
+        // Se estiver em fluxo de recuperação, não verificar sessão, deixar o componente ResetPassword processar
+        if (isRecoveryFlow) {
+          setAuthState({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
+          return;
+        }
 
         if (sessionError) {
           console.error('Erro ao obter sessão:', sessionError);

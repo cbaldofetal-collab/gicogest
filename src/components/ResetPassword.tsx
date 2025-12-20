@@ -64,6 +64,9 @@ export function ResetPassword() {
         
         if (hash.includes('access_token') && hash.includes('type=recovery')) {
           // O Supabase processa automaticamente o hash quando detecta na URL
+          // Aguardar um pouco para o Supabase processar o hash
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
           // Verificar se conseguimos obter o usuário (indica que o hash foi processado)
           const { data: { user }, error: hashError } = await supabase.auth.getUser();
           
