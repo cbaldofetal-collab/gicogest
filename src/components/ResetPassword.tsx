@@ -179,41 +179,53 @@ export function ResetPassword() {
     try {
       setSubmitting(true);
       setError(null);
-
-      // Verificar se há um usuário autenticado (o hash já foi processado)
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
       
-      if (userError || !user) {
-        console.error('Erro ao verificar usuário:', userError);
-        setError('Sessão inválida. Por favor, use o link do email novamente.');
-        setSubmitting(false);
-        return;
-      }
+      console.log('ResetPassword: Iniciando atualização de senha...');
 
-      // Atualizar a senha usando o Supabase
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: data.password,
-      });
-
-      if (updateError) {
-        console.error('Erro ao atualizar senha:', updateError);
+      // Adicionar timeout para evitar travamento
+      const updatePasswordPromise = (async () => {
+        // Verificar se há um usuário autenticado (o hash já foi processado)
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
         
-        // Traduzir mensagens de erro comuns do Supabase
-        let errorMessage = updateError.message || 'Erro ao atualizar senha. Tente novamente.';
-        
-        if (updateError.message?.includes('New password should be different from the old password')) {
-          errorMessage = 'A nova senha deve ser diferente da senha atual. Por favor, escolha uma senha diferente.';
-        } else if (updateError.message?.includes('Password should be at least')) {
-          errorMessage = 'A senha deve ter no mínimo 6 caracteres.';
-        } else if (updateError.message?.includes('invalid') || updateError.message?.includes('expired')) {
-          errorMessage = 'Link de recuperação inválido ou expirado. Por favor, solicite um novo link.';
+        if (userError || !user) {
+          console.error('ResetPassword: Erro ao verificar usuário:', userError);
+          throw new Error('Sessão inválida. Por favor, use o link do email novamente.');
         }
-        
-        setError(errorMessage);
-        setSubmitting(false);
-        return;
-      }
 
+        console.log('ResetPassword: Usuário verificado, atualizando senha...');
+
+        // Atualizar a senha usando o Supabase
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: data.password,
+        });
+
+        if (updateError) {
+          console.error('ResetPassword: Erro ao atualizar senha:', updateError);
+          
+          // Traduzir mensagens de erro comuns do Supabase
+          let errorMessage = updateError.message || 'Erro ao atualizar senha. Tente novamente.';
+          
+          if (updateError.message?.includes('New password should be different from the old password')) {
+            errorMessage = 'A nova senha deve ser diferente da senha atual. Por favor, escolha uma senha diferente.';
+          } else if (updateError.message?.includes('Password should be at least')) {
+            errorMessage = 'A senha deve ter no mínimo 6 caracteres.';
+          } else if (updateError.message?.includes('invalid') || updateError.message?.includes('expired')) {
+            errorMessage = 'Link de recuperação inválido ou expirado. Por favor, solicite um novo link.';
+          }
+          
+          throw new Error(errorMessage);
+        }
+
+        console.log('ResetPassword: Senha atualizada com sucesso!');
+        return true;
+      })();
+      
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout: A atualização está demorando muito. Tente novamente.')), 15000);
+      });
+      
+      await Promise.race([updatePasswordPromise, timeoutPromise]);
+      
       setSuccess(true);
       form.reset();
 
@@ -221,9 +233,13 @@ export function ResetPassword() {
       setTimeout(() => {
         window.location.href = '/';
       }, 2000);
-    } catch (err) {
-      console.error('Erro inesperado:', err);
-      setError('Erro inesperado. Tente novamente.');
+    } catch (err: any) {
+      console.error('ResetPassword: Erro inesperado:', err);
+      const errorMessage = err?.message || 'Erro inesperado. Tente novamente.';
+      setError(errorMessage);
+    } finally {
+      // Garantir que sempre desativa o estado de loading
+      console.log('ResetPassword: Finalizando submit, desativando loading...');
       setSubmitting(false);
     }
   };
