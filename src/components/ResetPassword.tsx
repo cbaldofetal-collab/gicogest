@@ -67,10 +67,41 @@ export function ResetPassword() {
         if (hash.includes('access_token') && hash.includes('type=recovery')) {
           console.log('ResetPassword: Hash de recuperação detectado, processando...');
           
-          // O Supabase processa automaticamente o hash quando detecta na URL
-          // Tentar obter a sessão primeiro para garantir que o hash foi processado
+          // Extrair o access_token do hash
+          const hashParams = new URLSearchParams(hash.substring(1));
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
+          
+          if (accessToken) {
+            console.log('ResetPassword: Token encontrado no hash, configurando sessão...');
+            
+            // Configurar a sessão manualmente usando o token
+            try {
+              const { data: { session }, error: sessionError } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken || '',
+              });
+              
+              if (sessionError) {
+                console.error('ResetPassword: Erro ao configurar sessão:', sessionError);
+                setError('Erro ao processar link de recuperação. Por favor, solicite um novo link.');
+                setLoading(false);
+                return;
+              }
+              
+              if (session && session.user) {
+                console.log('ResetPassword: Sessão configurada com sucesso');
+                setLoading(false);
+                return;
+              }
+            } catch (setSessionError) {
+              console.error('ResetPassword: Erro ao setSession:', setSessionError);
+            }
+          }
+          
+          // Fallback: tentar obter a sessão (caso o Supabase já tenha processado)
           let attempts = 0;
-          const maxAttempts = 5;
+          const maxAttempts = 3;
           
           while (attempts < maxAttempts) {
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -83,22 +114,15 @@ export function ResetPassword() {
               return;
             }
             
-            // Tentar getUser como fallback
-            const { data: { user }, error: userError } = await supabase.auth.getUser();
-            
-            if (user && !userError) {
-              console.log('ResetPassword: Usuário encontrado via getUser');
-              setLoading(false);
-              return;
-            }
-            
             attempts++;
             console.log(`ResetPassword: Tentativa ${attempts}/${maxAttempts} - aguardando processamento do hash...`);
           }
           
           // Se chegou aqui, não conseguiu processar o hash
           console.error('ResetPassword: Não foi possível processar o hash após várias tentativas');
-          setError('Não foi possível processar o link de recuperação. Por favor, solicite um novo link.');
+          // Mesmo assim, permitir que o usuário tente atualizar a senha
+          // O Supabase pode processar o hash quando tentar atualizar
+          console.log('ResetPassword: Permitindo continuar mesmo sem sessão confirmada');
           setLoading(false);
         } else {
           console.error('ResetPassword: Hash de recuperação não encontrado na URL');
