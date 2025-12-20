@@ -40,6 +40,28 @@ export function ResetPassword() {
     const processHash = async () => {
       try {
         const hash = window.location.hash;
+        const searchParams = new URLSearchParams(window.location.search);
+        
+        // Verificar se há erros na URL (link expirado, inválido, etc.)
+        const error = searchParams.get('error') || (hash.includes('error=') ? hash.split('error=')[1]?.split('&')[0] : null);
+        const errorCode = searchParams.get('error_code') || (hash.includes('error_code=') ? hash.split('error_code=')[1]?.split('&')[0] : null);
+        
+        if (error || errorCode) {
+          console.error('Erro na URL:', { error, errorCode });
+          
+          let errorMessage = 'Link de recuperação inválido ou expirado.';
+          
+          if (errorCode === 'otp_expired' || error?.includes('expired')) {
+            errorMessage = 'O link de recuperação expirou. Por favor, solicite um novo link.';
+          } else if (errorCode === 'access_denied' || error?.includes('access_denied')) {
+            errorMessage = 'Acesso negado. O link pode ter sido usado ou expirado. Solicite um novo link.';
+          }
+          
+          setError(errorMessage);
+          setLoading(false);
+          return;
+        }
+        
         if (hash.includes('access_token') && hash.includes('type=recovery')) {
           // O Supabase processa automaticamente o hash quando detecta na URL
           // Verificar se conseguimos obter o usuário (indica que o hash foi processado)
@@ -164,9 +186,19 @@ export function ResetPassword() {
         <CardContent>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             {error && (
-              <div className="p-3 bg-danger-50 border border-danger-200 rounded-md flex items-start gap-2">
-                <AlertCircle className="h-5 w-5 text-danger-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-danger-800">{error}</p>
+              <div className="p-3 bg-danger-50 border border-danger-200 rounded-md">
+                <div className="flex items-start gap-2 mb-2">
+                  <AlertCircle className="h-5 w-5 text-danger-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-danger-800">{error}</p>
+                </div>
+                <div className="mt-3 text-center">
+                  <a
+                    href="/"
+                    className="text-sm text-primary-600 hover:text-primary-700 hover:underline font-medium"
+                  >
+                    ← Voltar para o login e solicitar um novo link
+                  </a>
+                </div>
               </div>
             )}
 

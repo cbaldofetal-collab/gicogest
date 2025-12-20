@@ -19,7 +19,16 @@ function App() {
   useEffect(() => {
     // Verificar se a URL contém o hash de recuperação de senha
     const hash = window.location.hash;
-    if (hash.includes('access_token') && hash.includes('type=recovery')) {
+    const searchParams = new URLSearchParams(window.location.search);
+    
+    // Verificar se há erros na URL primeiro
+    const hasError = searchParams.get('error') || hash.includes('error=');
+    
+    // Mostrar página de reset apenas se não houver erro e houver token válido
+    if (!hasError && hash.includes('access_token') && hash.includes('type=recovery')) {
+      setShowResetPassword(true);
+    } else if (hasError) {
+      // Se houver erro, não mostrar reset password, deixar o componente ResetPassword tratar
       setShowResetPassword(true);
     }
   }, []);
