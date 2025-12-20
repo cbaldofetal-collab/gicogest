@@ -215,19 +215,37 @@ export function ResetPassword() {
 
         console.log('ResetPassword: Tentando atualizar senha diretamente...');
 
+        // Verificar conectividade primeiro
+        try {
+          await fetch('https://xlwholcjpfahxgzbxhsu.supabase.co/rest/v1/', {
+            method: 'HEAD',
+            signal: AbortSignal.timeout(5000),
+          });
+          console.log('ResetPassword: Conectividade com Supabase OK');
+        } catch (healthError) {
+          console.warn('ResetPassword: Problema de conectividade com Supabase:', healthError);
+          throw new Error('Não foi possível conectar ao servidor. Verifique sua conexão com a internet e tente novamente.');
+        }
+
         // Atualizar a senha diretamente - o Supabase processa o token automaticamente
+        console.log('ResetPassword: Chamando updateUser...');
         const updatePromise = supabase.auth.updateUser({
           password: data.password,
         });
         
         const updateTimeout = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Timeout: A atualização está demorando muito. Verifique sua conexão e tente novamente.')), 30000);
+          setTimeout(() => {
+            console.error('ResetPassword: Timeout após 30 segundos');
+            reject(new Error('Timeout: A atualização está demorando muito. Isso pode indicar:\n1. Problema de conexão com o servidor\n2. Token expirado (solicite um novo link)\n3. Problema temporário no Supabase\n\nPor favor, verifique sua conexão e tente novamente. Se o problema persistir, solicite um novo link de recuperação.'));
+          }, 30000);
         });
         
-        const { error: updateError } = await Promise.race([
+        const result = await Promise.race([
           updatePromise,
           updateTimeout,
         ]) as any;
+        
+        const { error: updateError } = result || {};
 
         if (updateError) {
           console.error('ResetPassword: Erro ao atualizar senha:', updateError);
