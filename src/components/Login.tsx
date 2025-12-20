@@ -72,17 +72,25 @@ export function Login() {
       setSubmitting(true);
       setError(null);
 
-      const result = await login({ name: data.name, password: data.password });
+      // Adicionar timeout para evitar travamento
+      const loginPromise = login({ name: data.name, password: data.password });
+      const timeoutPromise = new Promise<{ success: boolean; message: string }>((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout: O login está demorando muito. Tente novamente.')), 30000);
+      });
+
+      const result = await Promise.race([loginPromise, timeoutPromise]);
 
       if (!result.success) {
         setError(result.message || 'Erro ao processar. Tente novamente.');
       } else {
         loginForm.reset();
       }
-    } catch (err) {
-      setError('Erro inesperado. Tente novamente.');
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Erro inesperado. Tente novamente.';
+      setError(errorMessage);
       console.error('Erro:', err);
     } finally {
+      // Garantir que sempre desativa o estado de loading
       setSubmitting(false);
     }
   };

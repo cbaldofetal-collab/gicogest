@@ -201,13 +201,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         console.log('Login: Iniciando processo de login...');
         
-        // No Supabase, usamos email para login, mas podemos buscar por nome também
-        // Primeiro, tentamos buscar o usuário pelo nome para obter o email
-        const { data: userProfile, error: profileError } = await supabase
+        // Adicionar timeout para busca de perfil
+        const profilePromise = supabase
           .from('users')
           .select('email')
           .eq('name', credentials.name.trim())
           .single();
+        
+        const profileTimeout = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Timeout ao buscar usuário')), 10000);
+        });
+        
+        const { data: userProfile, error: profileError } = await Promise.race([
+          profilePromise,
+          profileTimeout,
+        ]) as any;
 
         if (profileError) {
           console.error('Login: Erro ao buscar perfil:', profileError);
