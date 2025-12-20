@@ -42,12 +42,14 @@ export function ResetPassword() {
         const hash = window.location.hash;
         const searchParams = new URLSearchParams(window.location.search);
         
+        console.log('ResetPassword: Processando hash...', { hash: hash.substring(0, 50) + '...' });
+        
         // Verificar se há erros na URL (link expirado, inválido, etc.)
         const error = searchParams.get('error') || (hash.includes('error=') ? hash.split('error=')[1]?.split('&')[0] : null);
         const errorCode = searchParams.get('error_code') || (hash.includes('error_code=') ? hash.split('error_code=')[1]?.split('&')[0] : null);
         
         if (error || errorCode) {
-          console.error('Erro na URL:', { error, errorCode });
+          console.error('ResetPassword: Erro na URL:', { error, errorCode });
           
           let errorMessage = 'Link de recuperação inválido ou expirado.';
           
@@ -63,27 +65,48 @@ export function ResetPassword() {
         }
         
         if (hash.includes('access_token') && hash.includes('type=recovery')) {
+          console.log('ResetPassword: Hash de recuperação detectado, processando...');
+          
           // O Supabase processa automaticamente o hash quando detecta na URL
-          // Aguardar um pouco para o Supabase processar o hash
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Tentar obter a sessão primeiro para garantir que o hash foi processado
+          let attempts = 0;
+          const maxAttempts = 5;
           
-          // Verificar se conseguimos obter o usuário (indica que o hash foi processado)
-          const { data: { user }, error: hashError } = await supabase.auth.getUser();
-          
-          if (hashError || !user) {
-            console.error('Erro ao processar hash:', hashError);
-            setError('Link de recuperação inválido ou expirado. Por favor, solicite um novo link.');
-            setLoading(false);
-            return;
+          while (attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (session && session.user) {
+              console.log('ResetPassword: Sessão encontrada, usuário autenticado');
+              setLoading(false);
+              return;
+            }
+            
+            // Tentar getUser como fallback
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            
+            if (user && !userError) {
+              console.log('ResetPassword: Usuário encontrado via getUser');
+              setLoading(false);
+              return;
+            }
+            
+            attempts++;
+            console.log(`ResetPassword: Tentativa ${attempts}/${maxAttempts} - aguardando processamento do hash...`);
           }
-
+          
+          // Se chegou aqui, não conseguiu processar o hash
+          console.error('ResetPassword: Não foi possível processar o hash após várias tentativas');
+          setError('Não foi possível processar o link de recuperação. Por favor, solicite um novo link.');
           setLoading(false);
         } else {
+          console.error('ResetPassword: Hash de recuperação não encontrado na URL');
           setError('Link de recuperação inválido ou expirado. Por favor, solicite um novo link.');
           setLoading(false);
         }
       } catch (err) {
-        console.error('Erro ao processar hash:', err);
+        console.error('ResetPassword: Erro ao processar hash:', err);
         setError('Erro ao processar link de recuperação. Tente novamente.');
         setLoading(false);
       }
