@@ -275,16 +275,15 @@ export function Login() {
                 {loginForm.formState.errors.password && (
                   <p className="mt-1 text-sm text-danger-600">{loginForm.formState.errors.password.message}</p>
                 )}
-              </div>
-
-              <div className="text-right">
-                <button
-                  type="button"
-                  onClick={handleShowResetPassword}
-                  className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
-                >
-                  Esqueci minha senha
-                </button>
+                <div className="mt-2 text-right">
+                  <button
+                    type="button"
+                    onClick={handleShowResetPassword}
+                    className="text-sm text-primary-600 hover:text-primary-700 hover:underline font-medium"
+                  >
+                    Esqueci minha senha
+                  </button>
+                </div>
               </div>
 
               <Button type="submit" disabled={submitting} className="w-full">
