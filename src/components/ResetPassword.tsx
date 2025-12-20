@@ -75,12 +75,21 @@ export function ResetPassword() {
           if (accessToken) {
             console.log('ResetPassword: Token encontrado no hash, configurando sessão...');
             
-            // Configurar a sessão manualmente usando o token
+            // Configurar a sessão manualmente usando o token com timeout
             try {
-              const { data: { session }, error: sessionError } = await supabase.auth.setSession({
+              const setSessionPromise = supabase.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken || '',
               });
+              
+              const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Timeout ao configurar sessão')), 5000);
+              });
+              
+              const { data: { session }, error: sessionError } = await Promise.race([
+                setSessionPromise,
+                timeoutPromise,
+              ]) as any;
               
               console.log('ResetPassword: Resultado do setSession:', { 
                 hasSession: !!session, 
@@ -114,11 +123,16 @@ export function ResetPassword() {
               return;
             } catch (setSessionError: any) {
               console.error('ResetPassword: Erro ao setSession:', setSessionError);
-              // Mesmo com erro, permitir continuar
-              console.log('ResetPassword: Continuando mesmo com erro de setSession...');
+              // Mesmo com erro ou timeout, permitir continuar
+              console.log('ResetPassword: Continuando mesmo com erro/timeout de setSession...');
               setLoading(false);
               return;
             }
+          } else {
+            console.error('ResetPassword: accessToken não encontrado no hash');
+            setError('Link de recuperação inválido. Por favor, solicite um novo link.');
+            setLoading(false);
+            return;
           }
           
           // Fallback: tentar obter a sessão (caso o Supabase já tenha processado)
@@ -130,7 +144,7 @@ export function ResetPassword() {
             
             const { data: { session } } = await supabase.auth.getSession();
             
-            if (session && session.user) {
+            if (session?.user) {
               console.log('ResetPassword: Sessão encontrada, usuário autenticado');
               setLoading(false);
               return;
