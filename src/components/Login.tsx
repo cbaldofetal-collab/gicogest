@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
-import { LogIn, UserPlus, AlertCircle, Mail } from 'lucide-react';
+import { LogIn, UserPlus, AlertCircle, Mail, Lock, CheckCircle } from 'lucide-react';
 
 const loginSchema = z.object({
   name: z
@@ -41,11 +41,19 @@ const registerSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 type RegisterFormData = z.infer<typeof registerSchema>;
 
+const resetPasswordSchema = z.object({
+  email: z.string().email('Digite um email válido').toLowerCase(),
+});
+
+type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
+
 export function Login() {
-  const { login, register: registerUser } = useAuth();
+  const { login, register: registerUser, resetPassword } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -53,6 +61,10 @@ export function Login() {
 
   const registerForm = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
+  });
+
+  const resetPasswordForm = useForm<ResetPasswordFormData>({
+    resolver: zodResolver(resetPasswordSchema),
   });
 
   const onLoginSubmit = async (data: LoginFormData) => {
@@ -101,9 +113,48 @@ export function Login() {
 
   const toggleMode = () => {
     setIsLogin(!isLogin);
+    setShowResetPassword(false);
     setError(null);
+    setSuccess(null);
     loginForm.reset();
     registerForm.reset();
+    resetPasswordForm.reset();
+  };
+
+  const onResetPasswordSubmit = async (data: ResetPasswordFormData) => {
+    try {
+      setSubmitting(true);
+      setError(null);
+      setSuccess(null);
+
+      const result = await resetPassword(data.email);
+
+      if (result.success) {
+        setSuccess(result.message || 'Email de recuperação enviado com sucesso!');
+        resetPasswordForm.reset();
+      } else {
+        setError(result.message || 'Erro ao enviar email de recuperação.');
+      }
+    } catch (err) {
+      setError('Erro inesperado. Tente novamente.');
+      console.error('Erro:', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleShowResetPassword = () => {
+    setShowResetPassword(true);
+    setError(null);
+    setSuccess(null);
+    loginForm.reset();
+  };
+
+  const handleBackToLogin = () => {
+    setShowResetPassword(false);
+    setError(null);
+    setSuccess(null);
+    resetPasswordForm.reset();
   };
 
   return (
@@ -115,11 +166,77 @@ export function Login() {
           </div>
           <CardTitle className="text-2xl">GlicoGest</CardTitle>
           <CardDescription>
-            {isLogin ? 'Faça login para continuar' : 'Crie sua conta para começar'}
+            {showResetPassword
+              ? 'Recuperar senha'
+              : isLogin
+              ? 'Faça login para continuar'
+              : 'Crie sua conta para começar'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLogin ? (
+          {showResetPassword ? (
+            <form onSubmit={resetPasswordForm.handleSubmit(onResetPasswordSubmit)} className="space-y-4">
+              {error && (
+                <div className="p-3 bg-danger-50 border border-danger-200 rounded-md flex items-start gap-2">
+                  <AlertCircle className="h-5 w-5 text-danger-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-danger-800">{error}</p>
+                </div>
+              )}
+
+              {success && (
+                <div className="p-3 bg-success-50 border border-success-200 rounded-md flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-success-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-success-800">{success}</p>
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="reset-email" className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    className="pl-10"
+                    {...resetPasswordForm.register('email')}
+                    autoComplete="email"
+                  />
+                </div>
+                {resetPasswordForm.formState.errors.email && (
+                  <p className="mt-1 text-sm text-danger-600">
+                    {resetPasswordForm.formState.errors.email.message}
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-gray-500">
+                  Enviaremos um link para redefinir sua senha no email cadastrado.
+                </p>
+              </div>
+
+              <Button type="submit" disabled={submitting} className="w-full">
+                {submitting ? (
+                  'Enviando...'
+                ) : (
+                  <>
+                    <Lock className="mr-2 h-4 w-4" />
+                    Enviar Link de Recuperação
+                  </>
+                )}
+              </Button>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={handleBackToLogin}
+                  className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
+                >
+                  ← Voltar para login
+                </button>
+              </div>
+            </form>
+          ) : isLogin ? (
             <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
               {error && (
                 <div className="p-3 bg-danger-50 border border-danger-200 rounded-md flex items-start gap-2">
@@ -158,6 +275,16 @@ export function Login() {
                 {loginForm.formState.errors.password && (
                   <p className="mt-1 text-sm text-danger-600">{loginForm.formState.errors.password.message}</p>
                 )}
+              </div>
+
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={handleShowResetPassword}
+                  className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
+                >
+                  Esqueci minha senha
+                </button>
               </div>
 
               <Button type="submit" disabled={submitting} className="w-full">

@@ -9,6 +9,7 @@ interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<{ success: boolean; message?: string }>;
   register: (credentials: RegisterCredentials) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ success: boolean; message?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -415,6 +416,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Reset de senha
+  const resetPassword = useCallback(
+    async (email: string): Promise<{ success: boolean; message?: string }> => {
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+
+        if (error) {
+          console.error('Erro ao enviar email de recuperação:', error);
+          return { success: false, message: error.message || 'Erro ao enviar email de recuperação' };
+        }
+
+        return {
+          success: true,
+          message: 'Email de recuperação enviado! Verifique sua caixa de entrada.',
+        };
+      } catch (error) {
+        console.error('Erro ao resetar senha:', error);
+        return {
+          success: false,
+          message: 'Erro ao enviar email de recuperação. Tente novamente.',
+        };
+      }
+    },
+    []
+  );
+
   return (
     <AuthContext.Provider
       value={{
@@ -422,6 +451,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
+        resetPassword,
       }}
     >
       {children}

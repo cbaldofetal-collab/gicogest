@@ -4,7 +4,6 @@ import { Button } from './ui/button';
 import { TrendChart } from './Charts/TrendChart';
 import { TimeChart } from './Charts/TimeChart';
 import { PieChart } from './Charts/PieChart';
-import { DebugPanel } from './DebugPanel';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale/pt-BR';
 import { Activity, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
@@ -97,11 +96,6 @@ export function Dashboard() {
             Tentar Novamente
           </Button>
         </div>
-      )}
-
-      {/* Painel de Debug (apenas em desenvolvimento) */}
-      {import.meta.env.DEV && (
-        <DebugPanel />
       )}
 
       {/* Aviso se não houver sessão mas houver dados locais */}
