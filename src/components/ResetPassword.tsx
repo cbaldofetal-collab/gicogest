@@ -89,7 +89,19 @@ export function ResetPassword() {
 
       if (updateError) {
         console.error('Erro ao atualizar senha:', updateError);
-        setError(updateError.message || 'Erro ao atualizar senha. Tente novamente.');
+        
+        // Traduzir mensagens de erro comuns do Supabase
+        let errorMessage = updateError.message || 'Erro ao atualizar senha. Tente novamente.';
+        
+        if (updateError.message?.includes('New password should be different from the old password')) {
+          errorMessage = 'A nova senha deve ser diferente da senha atual. Por favor, escolha uma senha diferente.';
+        } else if (updateError.message?.includes('Password should be at least')) {
+          errorMessage = 'A senha deve ter no mínimo 6 caracteres.';
+        } else if (updateError.message?.includes('invalid') || updateError.message?.includes('expired')) {
+          errorMessage = 'Link de recuperação inválido ou expirado. Por favor, solicite um novo link.';
+        }
+        
+        setError(errorMessage);
         setSubmitting(false);
         return;
       }
