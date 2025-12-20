@@ -420,8 +420,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const resetPassword = useCallback(
     async (email: string): Promise<{ success: boolean; message?: string }> => {
       try {
+        // Usar domínio de produção ou o domínio atual
+        const redirectUrl = import.meta.env.PROD
+          ? 'https://glicogest.cbaldo.shop/reset-password'
+          : `${window.location.origin}/reset-password`;
+        
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo: redirectUrl,
         });
 
         if (error) {
