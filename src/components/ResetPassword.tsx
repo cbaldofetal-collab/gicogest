@@ -184,57 +184,44 @@ export function ResetPassword() {
 
       // Adicionar timeout para evitar travamento
       const updatePasswordPromise = (async () => {
-        // Tentar obter usuário com timeout
-        const getUserPromise = supabase.auth.getUser();
-        const getUserTimeout = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Timeout ao verificar usuário')), 10000);
-        });
-        
-        const { data: { user }, error: userError } = await Promise.race([
-          getUserPromise,
-          getUserTimeout,
-        ]) as any;
-        
-        if (userError || !user) {
-          console.error('ResetPassword: Erro ao verificar usuário:', userError);
-          // Tentar processar o hash novamente antes de dar erro
-          const hash = window.location.hash;
-          if (hash.includes('access_token')) {
-            const hashParams = new URLSearchParams(hash.substring(1));
-            const accessToken = hashParams.get('access_token');
-            const refreshToken = hashParams.get('refresh_token');
-            
-            if (accessToken) {
-              console.log('ResetPassword: Tentando processar hash novamente...');
-              await supabase.auth.setSession({
+        // Processar o hash novamente antes de atualizar (caso não tenha sido processado)
+        const hash = window.location.hash;
+        if (hash.includes('access_token')) {
+          const hashParams = new URLSearchParams(hash.substring(1));
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
+          
+          if (accessToken) {
+            console.log('ResetPassword: Processando hash antes de atualizar senha...');
+            try {
+              // Tentar setSession com timeout curto
+              const setSessionPromise = supabase.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken || '',
               });
               
-              // Tentar getUser novamente
-              const { data: { user: retryUser }, error: retryError } = await supabase.auth.getUser();
-              if (retryUser && !retryError) {
-                console.log('ResetPassword: Usuário obtido após retry');
-              } else {
-                throw new Error('Sessão inválida. Por favor, use o link do email novamente.');
-              }
-            } else {
-              throw new Error('Sessão inválida. Por favor, use o link do email novamente.');
+              const sessionTimeout = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Timeout')), 5000);
+              });
+              
+              await Promise.race([setSessionPromise, sessionTimeout]).catch(() => {
+                console.log('ResetPassword: setSession demorou, mas continuando...');
+              });
+            } catch (err) {
+              console.log('ResetPassword: Erro ao processar hash, mas continuando...', err);
             }
-          } else {
-            throw new Error('Sessão inválida. Por favor, use o link do email novamente.');
           }
         }
 
-        console.log('ResetPassword: Usuário verificado, atualizando senha...');
+        console.log('ResetPassword: Tentando atualizar senha diretamente...');
 
-        // Atualizar a senha usando o Supabase com timeout
+        // Atualizar a senha diretamente - o Supabase processa o token automaticamente
         const updatePromise = supabase.auth.updateUser({
           password: data.password,
         });
         
         const updateTimeout = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Timeout ao atualizar senha')), 20000);
+          setTimeout(() => reject(new Error('Timeout: A atualização está demorando muito. Verifique sua conexão e tente novamente.')), 30000);
         });
         
         const { error: updateError } = await Promise.race([
