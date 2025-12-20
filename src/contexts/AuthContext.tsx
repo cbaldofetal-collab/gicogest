@@ -34,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Verificar sessão existente ao carregar
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
+    let subscription: { unsubscribe: () => void } | null = null;
     
     async function checkSession() {
       try {
@@ -136,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Ouvir mudanças na autenticação
     const {
-      data: { subscription },
+      data: { subscription: authSubscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       try {
         if (session?.user) {
@@ -184,10 +185,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
+    subscription = authSubscription;
+
     // Cleanup function
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
-      subscription.unsubscribe();
+      if (subscription) subscription.unsubscribe();
     };
   }, []);
 
