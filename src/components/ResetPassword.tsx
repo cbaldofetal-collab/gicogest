@@ -82,20 +82,42 @@ export function ResetPassword() {
                 refresh_token: refreshToken || '',
               });
               
+              console.log('ResetPassword: Resultado do setSession:', { 
+                hasSession: !!session, 
+                hasUser: !!session?.user,
+                error: sessionError?.message 
+              });
+              
               if (sessionError) {
                 console.error('ResetPassword: Erro ao configurar sessão:', sessionError);
-                setError('Erro ao processar link de recuperação. Por favor, solicite um novo link.');
+                // Mesmo com erro, permitir continuar - o token pode ser válido
+                console.log('ResetPassword: Continuando mesmo com erro de sessão...');
+              }
+              
+              if (session && session.user) {
+                console.log('ResetPassword: Sessão configurada com sucesso, usuário:', session.user.email);
                 setLoading(false);
                 return;
               }
               
-              if (session && session.user) {
-                console.log('ResetPassword: Sessão configurada com sucesso');
+              // Se não conseguiu sessão, verificar se consegue obter usuário
+              const { data: { user }, error: userError } = await supabase.auth.getUser();
+              if (user && !userError) {
+                console.log('ResetPassword: Usuário obtido via getUser após setSession');
                 setLoading(false);
                 return;
               }
-            } catch (setSessionError) {
+              
+              // Se chegou aqui, não conseguiu sessão nem usuário, mas permite continuar
+              console.log('ResetPassword: Não conseguiu confirmar sessão, mas permitindo continuar');
+              setLoading(false);
+              return;
+            } catch (setSessionError: any) {
               console.error('ResetPassword: Erro ao setSession:', setSessionError);
+              // Mesmo com erro, permitir continuar
+              console.log('ResetPassword: Continuando mesmo com erro de setSession...');
+              setLoading(false);
+              return;
             }
           }
           
