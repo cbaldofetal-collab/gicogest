@@ -1,0 +1,26 @@
+# 📋 COMANDOS PARA ENVIAR PROJETO PARA GITHUB
+# Copie e cole cada comando no Terminal, um por vez
+
+# 1. Ir para a pasta do projeto
+cd "/Volumes/Extreme SSD/GLIC GEST 1 CURSOSR"
+
+# 2. Inicializar Git
+git init
+
+# 3. Adicionar todos os arquivos
+git add .
+
+# 4. Fazer primeiro commit
+git commit -m "Initial commit: GlicoGest - Monitoramento de Glicemia"
+
+# 5. Conectar ao GitHub (seu repositório já está criado!)
+git remote add origin https://github.com/cbaldofetal-collab/gicogest.git
+
+# 6. Renomear branch para main
+git branch -M main
+
+# 7. Enviar para GitHub
+git push -u origin main
+
+# ⚠️ IMPORTANTE: Quando pedir senha, use o TOKEN que você criou, não sua senha do GitHub!
+
