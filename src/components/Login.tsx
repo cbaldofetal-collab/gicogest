@@ -281,7 +281,7 @@ export function Login() {
                 <button
                   type="button"
                   onClick={handleShowResetPassword}
-                  className="text-sm text-primary-600 hover:text-primary-700 hover:underline font-medium py-1"
+                  className="text-sm text-primary-600 hover:text-primary-700 hover:underline font-medium py-1 px-2"
                 >
                   Esqueci minha senha?
                 </button>
