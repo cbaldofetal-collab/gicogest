@@ -83,7 +83,7 @@ export function ResetPassword() {
               });
               
               const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Timeout ao configurar sessão')), 5000);
+                setTimeout(() => reject(new Error('Timeout ao configurar sessão')), 10000);
               });
               
               const { data: { session }, error: sessionError } = await Promise.race([
@@ -184,20 +184,63 @@ export function ResetPassword() {
 
       // Adicionar timeout para evitar travamento
       const updatePasswordPromise = (async () => {
-        // Verificar se há um usuário autenticado (o hash já foi processado)
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        // Tentar obter usuário com timeout
+        const getUserPromise = supabase.auth.getUser();
+        const getUserTimeout = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Timeout ao verificar usuário')), 10000);
+        });
+        
+        const { data: { user }, error: userError } = await Promise.race([
+          getUserPromise,
+          getUserTimeout,
+        ]) as any;
         
         if (userError || !user) {
           console.error('ResetPassword: Erro ao verificar usuário:', userError);
-          throw new Error('Sessão inválida. Por favor, use o link do email novamente.');
+          // Tentar processar o hash novamente antes de dar erro
+          const hash = window.location.hash;
+          if (hash.includes('access_token')) {
+            const hashParams = new URLSearchParams(hash.substring(1));
+            const accessToken = hashParams.get('access_token');
+            const refreshToken = hashParams.get('refresh_token');
+            
+            if (accessToken) {
+              console.log('ResetPassword: Tentando processar hash novamente...');
+              await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken || '',
+              });
+              
+              // Tentar getUser novamente
+              const { data: { user: retryUser }, error: retryError } = await supabase.auth.getUser();
+              if (retryUser && !retryError) {
+                console.log('ResetPassword: Usuário obtido após retry');
+              } else {
+                throw new Error('Sessão inválida. Por favor, use o link do email novamente.');
+              }
+            } else {
+              throw new Error('Sessão inválida. Por favor, use o link do email novamente.');
+            }
+          } else {
+            throw new Error('Sessão inválida. Por favor, use o link do email novamente.');
+          }
         }
 
         console.log('ResetPassword: Usuário verificado, atualizando senha...');
 
-        // Atualizar a senha usando o Supabase
-        const { error: updateError } = await supabase.auth.updateUser({
+        // Atualizar a senha usando o Supabase com timeout
+        const updatePromise = supabase.auth.updateUser({
           password: data.password,
         });
+        
+        const updateTimeout = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Timeout ao atualizar senha')), 20000);
+        });
+        
+        const { error: updateError } = await Promise.race([
+          updatePromise,
+          updateTimeout,
+        ]) as any;
 
         if (updateError) {
           console.error('ResetPassword: Erro ao atualizar senha:', updateError);
@@ -221,7 +264,7 @@ export function ResetPassword() {
       })();
       
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout: A atualização está demorando muito. Tente novamente.')), 15000);
+        setTimeout(() => reject(new Error('Timeout: A atualização está demorando muito. Verifique sua conexão e tente novamente.')), 30000);
       });
       
       await Promise.race([updatePasswordPromise, timeoutPromise]);
