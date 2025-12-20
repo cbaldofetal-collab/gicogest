@@ -143,3 +143,23 @@ export async function clearSession(): Promise<void> {
   await db.session.delete('current');
 }
 
+/**
+ * Limpa todos os dados locais do usuário
+ * Usado quando o usuário faz logout
+ */
+export async function clearAllLocalData(): Promise<void> {
+  try {
+    // Limpar todas as tabelas
+    await Promise.all([
+      db.readings.clear(),
+      db.reminders.clear(),
+      db.users.clear(),
+      db.session.clear(),
+    ]);
+    console.log('Dados locais limpos com sucesso');
+  } catch (error) {
+    console.error('Erro ao limpar dados locais:', error);
+    throw error;
+  }
+}
+

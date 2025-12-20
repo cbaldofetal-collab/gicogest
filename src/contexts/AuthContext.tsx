@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import type { ReactNode } from 'react';
 import type { LoginCredentials, RegisterCredentials, AuthState } from '../types/auth';
 import { supabase } from '../lib/supabase';
+import { clearAllLocalData } from '../lib/db';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AuthContextType extends AuthState {
@@ -376,12 +377,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Logout
   const logout = useCallback(async () => {
-    await supabase.auth.signOut();
-    setAuthState({
-      user: null,
-      isAuthenticated: false,
-      isLoading: false,
-    });
+    try {
+      // Limpar sessão do Supabase
+      await supabase.auth.signOut();
+      
+      // Limpar dados locais (IndexedDB)
+      await clearAllLocalData();
+      
+      // Limpar localStorage do Supabase
+      const supabaseStorageKey = 'glicogest-auth';
+      if (typeof window !== 'undefined') {
+        // Limpar todas as chaves relacionadas ao Supabase
+        Object.keys(localStorage).forEach(key => {
+          if (key.includes('supabase') || key === supabaseStorageKey) {
+            localStorage.removeItem(key);
+          }
+        });
+      }
+      
+      // Atualizar estado
+      setAuthState({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+      });
+      
+      console.log('Logout realizado com sucesso - dados limpos');
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+      // Mesmo com erro, limpar o estado
+      setAuthState({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+      });
+    }
   }, []);
 
   return (
