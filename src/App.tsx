@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { Login } from './components/Login';
+import { ResetPassword } from './components/ResetPassword';
 import { Dashboard } from './components/Dashboard';
 import { GlucoseForm } from './components/GlucoseForm';
 import { ReportGenerator } from './components/ReportGenerator';
@@ -13,6 +14,15 @@ type Tab = 'dashboard' | 'register' | 'report' | 'settings';
 function App() {
   const { isAuthenticated, isLoading, logout, user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [showResetPassword, setShowResetPassword] = useState(false);
+
+  useEffect(() => {
+    // Verificar se a URL contém o hash de recuperação de senha
+    const hash = window.location.hash;
+    if (hash.includes('access_token') && hash.includes('type=recovery')) {
+      setShowResetPassword(true);
+    }
+  }, []);
 
   // Mostrar tela de login se não estiver autenticado
   if (isLoading) {
@@ -24,6 +34,11 @@ function App() {
         </div>
       </div>
     );
+  }
+
+  // Mostrar página de reset de senha se houver hash de recuperação
+  if (showResetPassword) {
+    return <ResetPassword />;
   }
 
   if (!isAuthenticated) {

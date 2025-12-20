@@ -1,0 +1,193 @@
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
+import { Lock, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+
+const resetPasswordSchema = z
+  .object({
+    password: z
+      .string()
+      .min(6, 'A senha deve ter no mínimo 6 caracteres')
+      .regex(/^[a-zA-Z0-9]+$/, 'A senha deve conter apenas letras e números (alfanumérica)')
+      .refine((val) => /[a-zA-Z]/.test(val), 'A senha deve conter pelo menos uma letra')
+      .refine((val) => /[0-9]/.test(val), 'A senha deve conter pelo menos um número'),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'As senhas não coincidem',
+    path: ['confirmPassword'],
+  });
+
+type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
+
+export function ResetPassword() {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const form = useForm<ResetPasswordFormData>({
+    resolver: zodResolver(resetPasswordSchema),
+  });
+
+  useEffect(() => {
+    // Verificar se há um hash de recuperação na URL
+    const hash = window.location.hash;
+    if (hash.includes('access_token') && hash.includes('type=recovery')) {
+      setLoading(false);
+    } else {
+      setError('Link de recuperação inválido ou expirado.');
+      setLoading(false);
+    }
+  }, []);
+
+  const onSubmit = async (data: ResetPasswordFormData) => {
+    try {
+      setSubmitting(true);
+      setError(null);
+
+      // O Supabase já processa o hash automaticamente quando chamamos updateUser
+      // Não precisamos extrair o token manualmente
+
+      // Atualizar a senha usando o Supabase
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: data.password,
+      });
+
+      if (updateError) {
+        setError(updateError.message || 'Erro ao atualizar senha. Tente novamente.');
+        return;
+      }
+
+      setSuccess(true);
+      form.reset();
+
+      // Redirecionar para login após 3 segundos
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 3000);
+    } catch (err) {
+      setError('Erro inesperado. Tente novamente.');
+      console.error('Erro:', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mb-4"></div>
+              <p className="text-gray-600">Verificando link de recuperação...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 w-16 h-16 bg-success-600 rounded-full flex items-center justify-center">
+              <CheckCircle className="h-8 w-8 text-white" />
+            </div>
+            <CardTitle className="text-2xl">Senha Atualizada!</CardTitle>
+            <CardDescription>Redirecionando para o login...</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 w-16 h-16 bg-primary-600 rounded-full flex items-center justify-center">
+            <Lock className="h-8 w-8 text-white" />
+          </div>
+          <CardTitle className="text-2xl">Redefinir Senha</CardTitle>
+          <CardDescription>Digite sua nova senha abaixo</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {error && (
+              <div className="p-3 bg-danger-50 border border-danger-200 rounded-md flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-danger-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-danger-800">{error}</p>
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Nova Senha
+              </label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Digite sua nova senha"
+                {...form.register('password')}
+                autoComplete="new-password"
+              />
+              {form.formState.errors.password && (
+                <p className="mt-1 text-sm text-danger-600">{form.formState.errors.password.message}</p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                Mínimo 6 caracteres, letras e números (alfanumérica)
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                Confirmar Nova Senha
+              </label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="Digite novamente sua nova senha"
+                {...form.register('confirmPassword')}
+                autoComplete="new-password"
+              />
+              {form.formState.errors.confirmPassword && (
+                <p className="mt-1 text-sm text-danger-600">{form.formState.errors.confirmPassword.message}</p>
+              )}
+            </div>
+
+            <Button type="submit" disabled={submitting} className="w-full">
+              {submitting ? (
+                'Atualizando...'
+              ) : (
+                <>
+                  <Lock className="mr-2 h-4 w-4" />
+                  Atualizar Senha
+                </>
+              )}
+            </Button>
+
+            <div className="text-center">
+              <a
+                href="/"
+                className="text-sm text-primary-600 hover:text-primary-700 hover:underline inline-flex items-center gap-1"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Voltar para o login
+              </a>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
