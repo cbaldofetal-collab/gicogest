@@ -277,11 +277,11 @@ export function Login() {
                 )}
               </div>
 
-              <div className="flex justify-end -mt-2 mb-2">
+              <div className="flex justify-end -mt-2 mb-3">
                 <button
                   type="button"
                   onClick={handleShowResetPassword}
-                  className="text-sm text-primary-600 hover:text-primary-700 hover:underline font-medium"
+                  className="text-sm text-primary-600 hover:text-primary-700 hover:underline font-medium py-1"
                 >
                   Esqueci minha senha?
                 </button>
