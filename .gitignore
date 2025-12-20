@@ -25,3 +25,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# macOS metadata files
+._*
+.DS_Store
+.AppleDouble
+.LSOverride
