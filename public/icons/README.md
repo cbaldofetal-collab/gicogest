@@ -23,3 +23,4 @@ Ou criar manualmente a partir de um ícone base (recomendado: 512x512 pixels) e 
 
 Por enquanto, você pode usar o ícone do Vite (`/vite.svg`) como placeholder, mas é recomendado criar ícones personalizados para o GlicoGest.
 
+

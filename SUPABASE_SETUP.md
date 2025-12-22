@@ -125,3 +125,4 @@ Com o Supabase configurado:
 - Documentação Supabase: https://supabase.com/docs
 - Dashboard do seu projeto: https://app.supabase.com
 
+

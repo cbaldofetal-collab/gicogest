@@ -98,3 +98,4 @@ console.log('Erro:', error);
 2. Capture screenshot do Supabase (Table Editor)
 3. Verifique os logs no Supabase (Dashboard → Logs)
 
+

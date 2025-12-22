@@ -226,3 +226,4 @@ Se tiver problemas durante o deploy:
 2. Confirme que as variáveis de ambiente estão configuradas
 3. Verifique se o Supabase está acessível publicamente
 
+

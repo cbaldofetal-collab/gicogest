@@ -42,3 +42,4 @@ export function isGlucoseNormal(type: GlucoseType, value: number): boolean {
   return value <= reference.max;
 }
 
+

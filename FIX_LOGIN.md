@@ -42,3 +42,4 @@ Esta política permite que qualquer pessoa busque usuários na tabela `users`, m
 
 Se quiser uma solução mais segura, podemos criar uma função que retorna apenas o email sem expor outros dados.
 
+

@@ -25,7 +25,8 @@ function App() {
     const hasError = searchParams.get('error') || hash.includes('error=');
     
     // Mostrar página de reset se houver hash de recuperação (com ou sem erro)
-    if (hash.includes('access_token') && hash.includes('type=recovery') || hasError) {
+    const hasRecoveryToken = hash.includes('access_token') && hash.includes('type=recovery');
+    if (hasRecoveryToken || hasError) {
       setShowResetPassword(true);
     }
   }, []);
@@ -33,9 +34,10 @@ function App() {
   // Mostrar página de reset de senha imediatamente se houver hash de recuperação
   // Não esperar o AuthContext terminar de carregar
   const hash = window.location.hash;
-  const hasRecoveryHash = hash.includes('access_token') && hash.includes('type=recovery') || hash.includes('error=');
+  const hasRecoveryToken = hash.includes('access_token') && hash.includes('type=recovery');
+  const hasError = hash.includes('error=') || new URLSearchParams(window.location.search).get('error');
   
-  if (hasRecoveryHash || showResetPassword) {
+  if ((hasRecoveryToken || hasError) || showResetPassword) {
     return <ResetPassword />;
   }
 

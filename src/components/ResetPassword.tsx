@@ -217,10 +217,15 @@ export function ResetPassword() {
 
         // Verificar conectividade primeiro
         try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          
           await fetch('https://xlwholcjpfahxgzbxhsu.supabase.co/rest/v1/', {
             method: 'HEAD',
-            signal: AbortSignal.timeout(5000),
+            signal: controller.signal,
           });
+          
+          clearTimeout(timeoutId);
           console.log('ResetPassword: Conectividade com Supabase OK');
         } catch (healthError) {
           console.warn('ResetPassword: Problema de conectividade com Supabase:', healthError);

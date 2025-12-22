@@ -103,3 +103,4 @@ console.log('Resultado:', { data, error });
 3. Verifique se o arquivo `.env` está correto
 4. Reinicie o servidor: `npm run dev`
 
+
