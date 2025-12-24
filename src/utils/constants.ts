@@ -43,3 +43,4 @@ export function isGlucoseNormal(type: GlucoseType, value: number): boolean {
 }
 
 
+

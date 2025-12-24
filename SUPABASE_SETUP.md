@@ -126,3 +126,4 @@ Com o Supabase configurado:
 - Dashboard do seu projeto: https://app.supabase.com
 
 
+

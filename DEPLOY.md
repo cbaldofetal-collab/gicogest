@@ -227,3 +227,4 @@ Se tiver problemas durante o deploy:
 3. Verifique se o Supabase está acessível publicamente
 
 
+

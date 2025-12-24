@@ -218,9 +218,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (credentials: LoginCredentials): Promise<{ success: boolean; message?: string }> => {
       try {
-        console.log('Login: Iniciando processo de login...');
+        console.log('Login: Iniciando processo de login para:', credentials.name);
+        
+        // Verificar conectividade primeiro
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          await fetch('https://xlwholcjpfahxgzbxhsu.supabase.co/rest/v1/', {
+            method: 'HEAD',
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          console.log('Login: Conectividade com Supabase OK');
+        } catch (connectError) {
+          console.error('Login: Problema de conectividade:', connectError);
+          return { 
+            success: false, 
+            message: 'Não foi possível conectar ao servidor. Verifique sua conexão com a internet.' 
+          };
+        }
         
         // Adicionar timeout para busca de perfil
+        console.log('Login: Buscando perfil do usuário...');
         const profilePromise = supabase
           .from('users')
           .select('email')
@@ -231,10 +250,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setTimeout(() => reject(new Error('Timeout ao buscar usuário')), 10000);
         });
         
-        const { data: userProfile, error: profileError } = await Promise.race([
-          profilePromise,
-          profileTimeout,
-        ]) as any;
+        let userProfile;
+        let profileError;
+        
+        try {
+          const result = await Promise.race([
+            profilePromise,
+            profileTimeout,
+          ]) as any;
+          userProfile = result.data;
+          profileError = result.error;
+        } catch (raceError: any) {
+          console.error('Login: Erro na busca de perfil (race):', raceError);
+          if (raceError.message === 'Timeout ao buscar usuário') {
+            return { 
+              success: false, 
+              message: 'Timeout ao buscar usuário. Verifique sua conexão e tente novamente.' 
+            };
+          }
+          profileError = raceError;
+        }
 
         if (profileError) {
           console.error('Login: Erro ao buscar perfil:', profileError);
@@ -246,40 +281,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
           
           // Se for erro de RLS, dar mensagem mais específica
-          if (profileError.code === '42501' || profileError.message.includes('permission denied')) {
-            return { success: false, message: 'Erro de permissão. Verifique as políticas RLS no Supabase.' };
+          if (profileError.code === '42501' || profileError.message?.includes('permission denied')) {
+            return { 
+              success: false, 
+              message: 'Erro de permissão. Verifique as políticas RLS no Supabase.' 
+            };
           }
           
+          // Se for erro de "not found" (PGRST116), significa que o usuário não existe
+          if (profileError.code === 'PGRST116' || profileError.message?.includes('No rows')) {
+            return { success: false, message: 'Nome de usuário ou senha incorretos' };
+          }
+          
+          return { 
+            success: false, 
+            message: `Erro ao buscar usuário: ${profileError.message || 'Tente novamente'}` 
+          };
+        }
+
+        if (!userProfile || !userProfile.email) {
+          console.error('Login: Perfil não encontrado ou sem email para o nome:', credentials.name);
           return { success: false, message: 'Nome de usuário ou senha incorretos' };
         }
 
-        if (!userProfile) {
-          console.error('Login: Perfil não encontrado para o nome:', credentials.name);
-          return { success: false, message: 'Nome de usuário ou senha incorretos' };
-        }
-
-        console.log('Login: Perfil encontrado, fazendo signIn...');
-        const { data, error } = await supabase.auth.signInWithPassword({
+        console.log('Login: Perfil encontrado, email:', userProfile.email);
+        console.log('Login: Fazendo signIn com Supabase Auth...');
+        
+        const signInPromise = supabase.auth.signInWithPassword({
           email: userProfile.email,
           password: credentials.password,
         });
+        
+        const signInTimeout = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Timeout ao fazer login')), 15000);
+        });
+        
+        let signInResult;
+        try {
+          signInResult = await Promise.race([signInPromise, signInTimeout]) as any;
+        } catch (timeoutError: any) {
+          console.error('Login: Timeout no signIn:', timeoutError);
+          return { 
+            success: false, 
+            message: 'Timeout ao fazer login. Verifique sua conexão e tente novamente.' 
+          };
+        }
+        
+        const { data, error } = signInResult || {};
 
         if (error) {
           console.error('Login: Erro no signIn:', error);
           
           // Mensagens de erro mais específicas
-          if (error.message.includes('Email not confirmed') || error.message.includes('email_not_confirmed')) {
+          if (error.message?.includes('Email not confirmed') || error.message?.includes('email_not_confirmed')) {
             return { 
               success: false, 
               message: 'Email não confirmado. Verifique seu email ou contate o administrador.' 
             };
           }
           
-          if (error.message.includes('Invalid login credentials') || error.message.includes('invalid_credentials')) {
+          if (error.message?.includes('Invalid login credentials') || error.message?.includes('invalid_credentials')) {
             return { success: false, message: 'Nome de usuário ou senha incorretos' };
           }
           
-          return { success: false, message: `Erro ao fazer login: ${error.message}` };
+          return { 
+            success: false, 
+            message: `Erro ao fazer login: ${error.message || 'Tente novamente'}` 
+          };
         }
 
         console.log('Login: SignIn bem-sucedido, verificando sessão...');

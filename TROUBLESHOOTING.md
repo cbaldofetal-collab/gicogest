@@ -99,3 +99,4 @@ console.log('Erro:', error);
 3. Verifique os logs no Supabase (Dashboard → Logs)
 
 
+
